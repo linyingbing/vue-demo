@@ -62,13 +62,9 @@ export default {
     // this.src = 'https://stage.report.ricare.online/intervention-comparison.html?id=1626165191608160257&resize=true'
       this.$nextTick(() => {
         const iframe = window.frames['iFrame']
-        // this.iframe = this.$refs.iFrame.contentWindow
         const handleLoad = () => {
           setTimeout(() => {
             console.log(111)
-            /* console.log(iframe.document)
-            const Do = (iframe.contentDocument || iframe.contentWindow.document)
-            console.log(Do) */
           }, 500)
         }
         iframe.addEventListener('load', handleLoad, true)
@@ -136,11 +132,11 @@ export default {
     },
     handleSubmit() {
       const iframe = window.frames['iFrame']
-      const Do = (iframe.contentWindow || iframe.contentDocument)
-      let menus = Do.document.getElementsByClassName('menu_wp')
+      const Do = (iframe.contentDocument || iframe.contentWindow.document )
+      let pages = Do.getElementsByTagName('div')
       let sortArr = []
-      for(var i = 0; i < menus.length; i++) {
-        const sort = menus[i].getAttribute('sort')
+      for(var i = 0; i < pages.length; i++) {
+        const sort = pages[i].getAttribute('sort')
         sortArr.push(sort)
       }
 
