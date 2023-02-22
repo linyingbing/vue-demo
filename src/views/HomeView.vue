@@ -1,49 +1,82 @@
 <template>
   <div class="home">
     <div class="left">
-      <iframe id="iFrame" :src="src" frameborder="0" style="width: 100%; height: 100%" />
+      <iframe id="iFrame" ref="iFrame" :src="src" frameborder="0" style="width: 100%; height: 100%" />
     </div>
     <button @click="handleSubmit">点击获取页面数据排序</button>
   </div>
 </template>
 
 <script>
+/* //回调函数
+function receiveMessageFromIframePage (event) {
+    console.log('receiveMessageFromIframePage', event)
+    console.log(33, event.source.document)
+}
+
+//监听message事件
+window.addEventListener("message", receiveMessageFromIframePage, false); */
 export default {
   name: 'HomeView',
   data () {
     return {
-      src: ''
+      src: '',
+      iframe: {}
     }
   },
   components: {
   },
   mounted () {
-    this.src = '../../page.html'
-    // this.src = 'http://127.0.0.1:8848/report-front/intervention-comparison.html?id=1626165191608160257&resize=true'
-    // this.src = 'https://stage.report.ricare.online/intervention-comparison.html?id=1626165191608160257&resize=true'
-    /* var ratioNum = window.screen.availWidth/2480;
-				ratioNum = parseInt(ratioNum * 100) < 100 ? parseInt(ratioNum * 100) : 100;
-				$("body").css("zoom", ratioNum + '%'); */
-    this.$nextTick(() => {
-      const iframe = window.frames['iFrame']
-      const handleLoad = () => {
-        setTimeout(() => {
-          const Do = (iframe.contentWindow || iframe.contentDocument)
-          let menus = Do.document.getElementsByClassName('menu_wp')
-          for(var i = 0; i < menus.length; i++) {
-            menus[i].setAttribute('draggable', true)
-            menus[i].setAttribute('sort', i)
-          }
-          this.drag(Do.document)
-        }, 500)
-      }
-      iframe.addEventListener('load', handleLoad, true)
-    })
+    this.demo();
+    // this.report();
+    
   },
   methods: {
+    demo() {
+      this.src = '../../page.html'
+      this.$nextTick(() => {
+        const iframe = window.frames['iFrame']
+        const handleLoad = () => {
+          setTimeout(() => {
+            const Do = (iframe.contentDocument || iframe.contentWindow.document )
+            // 计算缩放比例
+            var ratioNum = iframe.offsetWidth / 2480;
+            ratioNum = parseInt(ratioNum * 100) < 100 ? parseInt(ratioNum * 100) : 100;
+            Do.getElementsByTagName('body')[0].style = `zoom:${ratioNum}%`
+
+            let pages = Do.getElementsByTagName('div')
+                
+            for(var i = 0; i < pages.length; i++) {
+              pages[i].setAttribute('draggable', true)
+              pages[i].setAttribute('sort', i)
+            }
+            this.drag(Do)
+          }, 500)
+        }
+        iframe.addEventListener('load', handleLoad, true)
+      })
+    },
+    // 父子页面不符合“同源策略”导致跨域问题，无法获取子页面的
+    report() {
+      this.src = 'http://127.0.0.1:8848/report-front/intervention-comparison.html?id=1626165191608160257&resize=true'
+    // this.src = 'https://stage.report.ricare.online/intervention-comparison.html?id=1626165191608160257&resize=true'
+      this.$nextTick(() => {
+        const iframe = window.frames['iFrame']
+        // this.iframe = this.$refs.iFrame.contentWindow
+        const handleLoad = () => {
+          setTimeout(() => {
+            console.log(111)
+            /* console.log(iframe.document)
+            const Do = (iframe.contentDocument || iframe.contentWindow.document)
+            console.log(Do) */
+          }, 500)
+        }
+        iframe.addEventListener('load', handleLoad, true)
+      })
+    },
     drag (doc) {
       // 获取列表dom
-      let list = doc.querySelector('.menu_list');
+      let list = doc.querySelector('body');
       console.log("list ==>>", list)
       // 创建cruentItem存放将要拖动的元素
       let cruentItem
@@ -119,9 +152,18 @@ export default {
 <style scoped>
 .left {
   margin: 0 auto;
-  width: 50%;
+  width: 600px;
   height: 1000px;
   border: 1px solid #000;
+  
+}
+.left iframe {
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+.left iframe::-webkit-scrollbar {
+    display: none; /* Chrome Safari */
 }
 .moving {
   background-color: transparent;
