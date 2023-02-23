@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+ 
+<head>
+  <title>鼠标拖拽多选功能</title>
+  <script src="js/jquery-3.5.1.min.js"></script>
+  <script src="js/jquery-tmpl/jquery.tmpl.min.js"></script>
+  <style type="text/css">
+    * {
+      box-sizing: border-box;
+    }
+ 
+    ul {
+      width: 500px;
+      height: auto;
+      /* margin: 0; */
+      margin-left: 200px;
+      margin-top: 100px;
+      padding: 20px;
+      font-size: 0;
+      /*需设置定位*/
+      position: relative;
+      border: 1px solid red;
+    }
+ 
+    li {
+      width: 70px;
+      height: 70px;
+      margin: 10px;
+      padding: 0;
+      display: inline-block;
+      vertical-align: top;
+      font-size: 13px;
+      border: 1px solid #d9d9d9;
+    }
+ 
+    #moveSelected {
+      position: absolute;
+      background-color: blue;
+      opacity: 0.3;
+      border: 1px dashed #d9d9d9;
+      top: 0;
+      left: 0;
+      /* border: 1px solid blue; */
+    }
+ 
+    .selected {
+      background-color: pink;
+    }
+ 
+    .box {
+      width: 500px;
+      height: 500px;
+      background-color: skyblue;
+    }
+ 
+  </style>
+</head>
+ 
+<body>
+ 
+ 
+  <ul class="list">
+    <li draggable="true">1</li>
+    <li draggable="true">2</li>
+    <li draggable="true">3</li>
+    <li draggable="true">4</li>
+    <li draggable="true">5</li>
+    <li draggable="true">6</li>
+    <li draggable="true">7</li>
+    <li draggable="true">8</li>
+    <li draggable="true">9</li>
+    <li draggable="true">10</li>
+    <!-- 鼠标拖拽出的遮罩 （定位为  position:absolute）-->
+    <!-- 遮罩最好是在绑定了mouseover事件的元素内部，并且不要阻止遮罩的冒泡事件。这样鼠标移到了遮罩上面，依然可以利用冒泡执行父元素的mouseover事件，就不会出现遮罩只能扩大，不能缩小的情况了（亲自试过） -->
+    <div id="moveSelected"></div>
+  </ul>
+  <script type="text/javascript">
+    let flag = false; //是搜开启拖拽的标志
+    let oldLeft = 0;  //鼠标按下时的left
+    let oldTop = 0;   //鼠标按下时的top
+    let outLeft = 0;  //外层元素left，ul margin-left
+    let outTop = 0;   //外层元素top, ul margin-top
+    let selectedList = []; //拖拽多选选中的块集合
+    let moveSelected = document.getElementById('moveSelected'); // 选中阴影
+ 
+ 
+    //相当于$(document).ready(function(){})
+    $(function () {
+ 
+      //获取外层元素left，top坐标
+      getOutLeftTop()
+ 
+      /**
+       * 鼠标按下时开启拖拽多选，将遮罩定位并展现
+       */
+      $(".list").mousedown(function (event) {
+        console.log("鼠标按下");
+        //清空选中数据
+        clearSelectData()
+ 
+        //拖拽状态
+        flag = true;
+        //拖拽开始位置数据,left-外层元素left,top-外层元素top
+        // moveSelected.style.top = event.pageY + 'px';
+        // moveSelected.style.left = event.pageX + 'px';
+        moveSelected.style.top = (event.pageY-outTop)<0 ? 0 : (event.pageY-outTop) + 'px';
+        moveSelected.style.left = (event.pageX-outLeft)<0 ? 0 : (event.pageX-outLeft)  + 'px';
+        oldLeft = event.pageX;
+        oldTop = event.pageY;
+        console.log("鼠标按下",oldLeft,oldTop);
+        //清除默认行为,冒泡事件
+        clearEvent(event)
+      });
+      
+ 
+      /**
+       * 鼠标移动时计算遮罩的位置，宽 高
+       */
+      $(".list").mousemove(function (event) {
+        // console.log("鼠标移动");
+        if (!flag) return; //只有开启了拖拽，才进行mouseover操作
+        //left-外层元素left,top-外层元素top
+        let ex = event.pageX - outLeft //鼠标x
+        let ey = event.pageY - outTop  //鼠标y
+        let ox = oldLeft - outLeft     //遮罩层x
+        let oy = oldTop - outTop       //遮罩层y
+        // console.log("鼠标移动",ex,ey,ox,oy);
+        //向左 
+        if (event.pageX < oldLeft) { 
+          moveSelected.style.left = ex + 'px';
+          moveSelected.style.width = (ox - ex) + 'px';
+        } else {//向右
+          moveSelected.style.width = (ex - ox) + 'px';
+        }
+        //向上
+        if (event.pageY < oldTop) { 
+          moveSelected.style.top = ey + 'px';
+          moveSelected.style.height = (oy - ey) + 'px';
+        } else {//向下
+          moveSelected.style.height = (ey - oy) + 'px';
+        }
+ 
+        //清除默认行为,冒泡事件
+        clearEvent(event)
+      });
+ 
+ 
+      /**
+       * 鼠标抬起,获取选中元素,清除遮罩数据
+       */
+      $(".list").mouseup(function (event) {
+        console.log("鼠标抬起");
+        //遮罩层bottom
+        moveSelected.style.bottom = Number(moveSelected.style.top.split('px')[0]) + Number(moveSelected.style
+          .height.split('px')[0]) + 'px';
+        //遮罩层right
+        moveSelected.style.right = Number(moveSelected.style.left.split('px')[0]) + Number(moveSelected.style
+          .width.split('px')[0]) + 'px';
+        //获取遮罩覆盖的元素
+        if(flag) findSelected();
+        //清除遮罩数据
+        clearDragData();
+ 
+        //清除默认行为,冒泡事件
+        clearEvent(event)
+      });
+ 
+ 
+      /**
+       * 鼠标移除,清除遮罩数据
+       */
+      $(".list").mouseleave(function (event) {
+        console.log("鼠标移除");
+        //遮罩层属性清空
+        clearDragData();
+ 
+        //清除默认行为,冒泡事件
+        clearEvent(event)
+      });
+ 
+ 
+      /**
+       * 获取遮罩覆盖的元素
+       */
+      function findSelected() {
+        //待选中的元素
+        let blockList = $('.list').find('li');
+        //计算每个元素是否被覆盖选中，添加选中样式
+        for (let i = 0; i < blockList.length; i++) {
+ 
+          //1.计算每个元素的定位信息，left-外层元素left,top-外层元素top
+          let left = $(blockList[i]).offset().left - outLeft;
+          let right = $(blockList[i]).width() + left;
+          let top = $(blockList[i]).offset().top - outTop;
+          let bottom = $(blockList[i]).height() + top;
+          
+          // console.log("鼠标移动1",left,right,top,bottom);
+ 
+          //2.判断每个元素是否被遮罩盖住（即选中）
+          let leftFlag = moveSelected.style.left.split('px')[0] <= left && left <= moveSelected.style.right.split(
+            'px')[0];
+          let rightFlag = moveSelected.style.left.split('px')[0] <= right && right <= moveSelected.style.right
+            .split(
+              'px')[0];
+          let topFlag = moveSelected.style.top.split('px')[0] <= top && top <= moveSelected.style.bottom.split(
+            'px')[
+            0];
+          let bottomFlag = moveSelected.style.top.split('px')[0] <= bottom && bottom <= moveSelected.style.bottom
+            .split('px')[0];
+ 
+ 
+          //3.左或右任意一边被覆盖，上或下任意一边被覆盖，就算被选中
+          if ((leftFlag || rightFlag) && (topFlag || bottomFlag)) {
+            //选中数组不存在,推送到选中数组,去重
+            // selectedList.push(blockList[i]);
+            if(selectedList.indexOf($(blockList[i]).text())<0){
+              selectedList.push($(blockList[i]).text());
+            }
+            //选中元素他添加选中样式
+            $(blockList[i]).addClass('selected');
+          }
+        }
+        console.log("选中的元素",selectedList);
+        console.log("选中状态",flag);
+      }
+ 
+ 
+ 
+ 
+      /**
+       * 鼠标左键点击选中元素以外区域清空已经选择的数据
+       */
+      $(document).mouseup(function (e) {
+        //选中元素区域
+        let con = $('.list')
+        if (!con.is(e.target) && con.has(e.target).length === 0) {
+          console.log('鼠标点击选中元素区域外,清空选中数据')
+          //清空选中数据
+          clearSelectData()
+        }
+      })
+ 
+      /**
+       * 元素单选
+       */
+      $('.list').find('li').click(function (event) {
+        console.log('元素单选')
+        //清空选中数据
+        clearSelectData()
+      
+        //添加选中状态
+        $(this).addClass('selected');
+        if(selectedList.indexOf($(this).text())<0){
+          selectedList.push($(this).text());
+        }
+        console.log("选中的元素",selectedList);
+        console.log("选中状态",flag);
+        
+        //清除默认行为,冒泡事件
+        clearEvent(event)
+      })
+    });
+ 
+    /**
+     * 清除遮罩数据
+     */
+    function clearDragData() {
+      //清空选中状态
+      flag = false;
+      //清空遮罩层数据
+      moveSelected.style.width = 0;
+      moveSelected.style.height = 0;
+      moveSelected.style.top = 0;
+      moveSelected.style.left = 0;
+      moveSelected.style.bottom = 0;
+      moveSelected.style.right = 0;
+    }
+ 
+    /**
+     * 清空选中数据,选中状态
+     */
+    function clearSelectData(){
+      //清空选中状态
+      flag = false
+      //清空选中数据
+      selectedList = []
+      //清空选中样式
+      $('.list').find('li').removeClass('selected');
+    }
+ 
+    /**
+     * 清除默认行为,冒泡事件
+     */
+    function clearEvent(event) {
+      event.preventDefault(); // 阻止默认行为
+      event.stopPropagation(); // 阻止事件冒泡
+    }
+ 
+    /**
+     * 获取元素顶部x轴
+     */
+    function getElementLeft(element){
+        let actualLeft = element.offsetLeft;
+        let current = element.offsetParent;
+        while (current !== null){       
+            actualLeft += current.offsetLeft;
+            current = current.offsetParent;
+        }
+        return actualLeft;
+    }
+   
+    /**
+     * 获取元素顶部y轴
+     */
+    function getElementTop(element){
+        let actualTop = element.offsetTop;
+        let current = element.offsetParent;
+        while (current !== null){       
+            actualTop += current. offsetTop;
+            current = current.offsetParent;
+        }
+        return actualTop;
+    }
+ 
+    /**
+     * 获取外层元素left,top值
+     */
+    function getOutLeftTop(){
+      let listE = document.getElementsByClassName('list')[0]
+      outLeft = getElementLeft(listE)
+      outTop = getElementTop(listE)
+      console.log('外层元素左上角坐标',outLeft,outTop)
+    }
+ 
+  </script>
+</body>
+ 
+</html>
+ 
