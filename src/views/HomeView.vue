@@ -34,21 +34,33 @@ export default {
   methods: {
     demo() {
       this.src = '../../page.html'
+      // this.src = '../../drag.html'
       this.$nextTick(() => {
         const iframe = window.frames['iFrame']
         const handleLoad = () => {
           setTimeout(() => {
             const Do = (iframe.contentDocument || iframe.contentWindow.document )
             // 计算缩放比例
-            var ratioNum = iframe.offsetWidth / 2480;
+            var ratioNum = (iframe.offsetWidth) / 2480;
             ratioNum = parseInt(ratioNum * 100) < 100 ? parseInt(ratioNum * 100) : 100;
             Do.getElementsByTagName('body')[0].style = `zoom:${ratioNum}%`
 
-            let pages = Do.getElementsByTagName('div')
+            let bodyNode = Do.getElementsByTagName('body')[0]
+            let divs = bodyNode.children
+            let newNode = Do.createElement('div');//添加元素
+            newNode.style = `padding: ${14*100 / ratioNum}px 0;border: 20px solid #000;box-sizing: border-box; width: auto;`
+            newNode.classList.add('parent')
+            for(var i = 0; i < divs.length; i++) {
+              let div = divs[i]
+              if(div.className.indexOf('fixpage') > -1 || div.className.indexOf('activepage') > -1) {
+                // 判断是否为报告页
+                let elem = newNode.cloneNode(true)
+                elem.setAttribute('draggable', true)
+                elem.setAttribute('sort', i)
+                elem.appendChild(div.cloneNode(true))
                 
-            for(var i = 0; i < pages.length; i++) {
-              pages[i].setAttribute('draggable', true)
-              pages[i].setAttribute('sort', i)
+                div.parentNode.replaceChild(elem, div)
+              }
             }
             this.drag(Do)
           }, 500)
@@ -70,35 +82,47 @@ export default {
         iframe.addEventListener('load', handleLoad, true)
       })
     },
+
+    // 单选拖拽
     drag (doc) {
       // 获取列表dom
       let list = doc.querySelector('body');
       console.log("list ==>>", list)
       // 创建cruentItem存放将要拖动的元素
       let cruentItem
-      list.mousedown = e => {
-        e.preventDefault();
-      }
+
+      // 点击选择
+      /* list.onclick = (e) => {
+        console.log("点击 ==>> ", e)
+        // 此处使用setTimeout延迟被拖动的原始元素的样式
+        if(e.target.closest('.parent').className.indexOf('selected') > -1) {
+          e.target.closest('.parent').classList.remove("selected");
+        } else {
+          e.target.closest('.parent').classList.add("selected");
+        }
+        
+      } */
       // 当某被拖动的对象在另一对象容器范围内拖动时触发此事件
       list.ondragover = e => {
           e.preventDefault();
       }
       // 拖动开始
       list.ondragstart = e => {
-        console.log('拖动开始')
-          // 此处使用setTimeout延迟被拖动的原始元素的样式
-          setTimeout(() => {
-              e.target.classList.add("moving");
-          },0)
-          // 存储被拖动元素
-          cruentItem = e.target;
-          // 拖动时默认行为是复制，此处可以改为移动
-          e.dataTransfer.effectAllowed = 'move';
+        console.log('拖动开始', e, e.target.offsetHeight)
+        console.log(e.target.parentNode.getElementsByClassName('selected'))
+        // 此处使用setTimeout延迟被拖动的原始元素的样式
+        setTimeout(() => {
+            e.target.classList.add("moving");
+        },0)
+        // 存储被拖动元素
+        cruentItem = e.target;
+        // 拖动时默认行为是复制，此处可以改为移动
+        e.dataTransfer.effectAllowed = 'move';
       }
 
       // 拖动中
       list.ondragenter = e => {
-        console.log('拖动中')
+        console.log('拖动中', e)
           // 阻止默认事件，否则元素会先回到拖动开始时的位置，再到拖动结束的位置
           e.preventDefault();
           // 拖动事件期间排除被拖动元素自身，以及事件代理对象ul
@@ -112,14 +136,17 @@ export default {
           // 获取当前拖动元素所移动到的位置的元素的下标
           let targetIndex = itmeList.indexOf(e.target);
           // 如果当前拖动元素下标小于目标元素下标说明是往下移动，否则网上移动
-          if (tiemListIndex < targetIndex) {
+          if(e.target.getAttribute('draggable')) {
+            if (tiemListIndex < targetIndex) {
               console.log('往下移动');
               // 当前拖动元素插入到目标元素前面，且nextElementSibling目标元素的下一个兄弟元素
               list.insertBefore(cruentItem, e.target.nextElementSibling)
-          } else {
+            } else {
               console.log('往上移动');
-              list.insertBefore(cruentItem, e.target)
+                list.insertBefore(cruentItem, e.target)
+            }
           }
+          
       }
 
       // 拖动结束
@@ -133,13 +160,18 @@ export default {
     handleSubmit() {
       const iframe = window.frames['iFrame']
       const Do = (iframe.contentDocument || iframe.contentWindow.document )
-      let pages = Do.getElementsByTagName('div')
+      let bodyNode = Do.getElementsByTagName('body')[0]
+      let divs = bodyNode.children
       let sortArr = []
-      for(var i = 0; i < pages.length; i++) {
-        const sort = pages[i].getAttribute('sort')
-        sortArr.push(sort)
+      for(var i = 0; i < divs.length; i++) {
+        let div = divs[i]
+        if(div.getAttribute('draggable')) {
+          // 判断是否为报告页
+          const sort = div.getAttribute('sort')
+          sortArr.push(sort)
+        }
       }
-
+      
       console.log("排序后的顺序 ==>>", sortArr)
     }
   }
@@ -147,11 +179,16 @@ export default {
 </script>
 <style scoped>
 .left {
-  margin: 0 auto;
-  width: 600px;
-  height: 1000px;
+  float: left;
+  box-sizing: border-box;
+  padding: 10px;
+  width: 200px;
+  height: calc(100vh - 78px);
   border: 1px solid #000;
   
+}
+.right {
+  float: right;
 }
 .left iframe {
   /* 隐藏滚动条 */
